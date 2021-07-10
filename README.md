@@ -18,3 +18,5 @@ If you find this repository useful, please consider citing it with the following
   year =         {2021}
 }
 ```
+
+(Also remember to cite any of the specific models you use by referring to their original sources linked in the model_typology.csv file).
