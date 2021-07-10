@@ -6,4 +6,15 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 - the [Torchvision](https://pytorch.org/vision/stable/models.html) model zoo
 - the [Taskonomy](http://taskonomy.stanford.edu/) (visual_priors) project
 
-This repository is a work in progress. 
+This repository is a work in progress; please cite any issues you encounter.
+
+If you find this repository useful, please consider citing it with the following BibTex:
+
+```BibTeX
+@misc{conwell2021deepmodeldiver,
+  author =       {Colin Conwell},
+  title =        {DeepModelDiver},
+  howpublished = {\url{https://github.com/ColinConwell/DeepModelDiver}},
+  year =         {2021}
+}
+```
