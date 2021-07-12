@@ -29,7 +29,6 @@ def prep_model_for_extraction(model):
 
     return(model)
 
-
 # Method 1: Flatten model; extract features by layer
 
 class SaveFeatures():
@@ -336,46 +335,6 @@ def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = 
         metadata = {k:v for (k,v) in metadata.items() if k in map_data}
         
     return(metadata)
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-def get_model_metadata(model_string, convert_to_dataframe = True):
-    model_name = model_options[model_string]['model_name']
-    train_type = model_options[model_string]['train_type']
-    model = eval(model_options[model_string]['call'])
-    
-    layer_metadata = get_feature_map_metadata(model)
-    layer_count = len(layer_metadata.keys())
-    layer_order = [model_layer for model_layer in layer_metadata]
-    feature_counts = [layer_metadata[layer]['feature_count'] 
-                      for layer in layer_metadata]
-    parameter_counts = [layer_metadata[layer]['parameter_count'] 
-                        for layer in layer_metadata]
-    feature_map_shapes = [layer_metadata[layer]['feature_map_shape'] 
-                          for layer in layer_metadata]
-    total_feature_count = int(np.array(feature_counts).sum())
-    total_parameter_count = int(np.array(parameter_counts).sum())
-    model_metadata = {'total_feature_count': total_feature_count,
-                      'total_parameter_count': total_parameter_count,
-                      'layer_count': layer_count,
-                      'layer_metadata': layer_metadata}
-    
-    if not convert_to_dataframe:
-        return(model_metadata)
-        
-    if convert_to_dataframe:
-
-        model_metadata_dictlist = []
-        
-        for layer_index, layer in enumerate(layer_metadata):
-            model_metadata_dictlist.append({'model': model_name, 'train_type': train_type,
-                                            'model_layer': layer, 'model_layer_index': layer_index + 1,
-                                            'model_layer_depth': (layer_index + 1) / layer_count,
-                                            'feature_count': layer_metadata[layer]['feature_count'],
-                                            'parameter_count': layer_metadata[layer]['parameter_count']})
-
-        return(pd.DataFrame(model_metadata_dictlist))
         
 # Helpers: Dataloaders and functions for facilitating feature extraction
 
