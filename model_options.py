@@ -165,6 +165,7 @@ training_printouts = {
     'imagenet': 'pretrained on imagenet',
     'taskonomy': 'pretrained on taskonomy',
 }
+    
 
 def get_training_printouts(train_type = None):
     if train_type is None:

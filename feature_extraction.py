@@ -1,7 +1,6 @@
-import os, sys, json
+import os, sys
+import warnings
 import numpy as np
-import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm as tqdm
 from collections import defaultdict, OrderedDict
@@ -12,25 +11,6 @@ import torch, torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
-
-image_transforms = {
-    'imagenet_from_numpy': transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize((224,224)), 
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                             std=[0.229, 0.224, 0.225]),
-    ]),
-    'imagenet': transforms.Compose([
-        transforms.Resize((224,224)), 
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                             std=[0.229, 0.224, 0.225]),
-    ]),
-}
-
-def get_image_transforms():
-    return(image_transforms)
 
 def convert_relu(parent):
     for child_name, child in parent.named_children():
@@ -156,6 +136,30 @@ def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_match
     if not return_matches:
         return(deduplicated_feature_maps)
     
+def get_feature_maps_(model, inputs):
+    model = prep_model_for_extraction(model)
+    
+    def register_hook(module):
+        def hook(module, input, output):
+            module_name = get_module_name(module, feature_maps)
+            feature_maps[module_name] = output
+                    
+        if not isinstance(module, nn.Sequential): 
+            if not isinstance(module, nn.ModuleList):
+                hooks.append(module.register_forward_hook(hook))
+            
+    feature_maps = OrderedDict()
+    hooks = []
+    
+    model.apply(register_hook)
+    with torch.no_grad():
+        model(inputs)
+
+    for hook in hooks:
+        hook.remove()
+        
+    return(feature_maps)
+
 def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates = True):
     model = prep_model_for_extraction(model)
     enforce_input_shape = True
@@ -201,36 +205,27 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
         
     return(feature_maps)
 
-def get_feature_maps_raw(model, inputs):
-    model = prep_model_for_extraction(model)
-    
-    def register_hook(module):
-        def hook(module, input, output):
-            module_name = get_module_name(module, feature_maps)
-            feature_maps[module_name] = output
-                    
-        if not isinstance(module, nn.Sequential): 
-            if not isinstance(module, nn.ModuleList):
-                hooks.append(module.register_forward_hook(hook))
-            
-    feature_maps = OrderedDict()
-    hooks = []
-    
-    model.apply(register_hook)
-    with torch.no_grad():
-        model(inputs)
-
-    for hook in hooks:
-        hook.remove()
+def get_inputs_sample(inputs):
+    if isinstance(inputs, DataLoader):
+        input_sample = next(iter(inputs))[:3]
+    if isinstance(inputs, torch.Tensor):
+        input_sample = inputs[:3]
         
-    return(feature_maps)
+    return input_sample
 
 def get_empty_feature_maps(model, inputs = None, input_size=(3,224,224), dataset_size=3,
         layers_to_retain = None, remove_duplicates = True, names_only=False):
-    inputs = torch.rand(3, *input_size).type(torch.FloatTensor) if inputs is None else inputs
-    inputs = inputs.cuda() if next(model.parameters()).is_cuda else inputs
-    empty_feature_maps = get_feature_maps(model, inputs, layers_to_retain, 
-                                          remove_duplicates)
+    
+    if inputs is not None:
+        inputs = get_inputs_sample(inputs)
+        
+    if inputs is None:
+        inputs = torch.rand(3, *input_size).type(torch.FloatTensor)
+        
+    if next(model.parameters()).is_cuda:
+        inputs = inputs.cuda()
+        
+    empty_feature_maps = get_feature_maps(model, inputs, layers_to_retain, remove_duplicates)
     
     for map_key in empty_feature_maps:
         empty_feature_maps[map_key] = torch.empty(dataset_size, *empty_feature_maps[map_key].shape[1:])
@@ -241,46 +236,28 @@ def get_empty_feature_maps(model, inputs = None, input_size=(3,224,224), dataset
     if names_only == False:
         return empty_feature_maps  
 
-def get_all_feature_maps(model, inputs, extract_by_stack=False, remove_duplicates=True, 
-                         flatten=True, numpy=True, layers_to_retain=None, use_tqdm = True):
+def get_all_feature_maps(model, inputs, layers_to_retain=None, remove_duplicates=True, 
+                         flatten=True, numpy=True, use_tqdm = True):
     
     if isinstance(inputs, DataLoader):
-        if not extract_by_stack:
-            input_size, dataset_size, start_index = inputs.dataset[0].shape, len(inputs.dataset), 0
-            feature_maps = get_empty_feature_maps(model, next(iter(inputs))[:3], input_size, 
-                                                  dataset_size, layers_to_retain, remove_duplicates)
-            for i, imgs in enumerate(tqdm(inputs, leave = False)) if use_tqdm else enumerate(inputs):
-                imgs = imgs.cuda() if next(model.parameters()).is_cuda else imgs
-                batch_feature_map = get_feature_maps(model, imgs, layers_to_retain, remove_duplicates)
-                for layer in feature_maps.keys():
-                    feature_maps[layer][start_index:start_index+imgs.shape[0],...] = batch_feature_map[layer]
-                start_index += imgs.shape[0]
-                
-        if extract_by_stack:
-            input_size, dataset_size, start_index = inputs.dataset[0].shape, len(inputs.dataset), 0
-            feature_maps = get_empty_feature_maps(model, next(iter(inputs))[:3], input_size, 
-                                                  dataset_size, layers_to_retain, remove_duplicates)
-            for i, imgs in enumerate(tqdm(inputs, leave = False)) if use_tqdm else enumerate(inputs):
-                imgs = imgs.cuda() if next(model.parameters()).is_cuda else imgs
-                batch_feature_map = get_feature_maps(model, imgs, layers_to_retain, remove_duplicates)
-                for layer in feature_maps.keys():
-                    if feature_maps[layer] == None:
-                        feature_maps[layer] = batch_feature_map[layer]
-                    if feature_maps[layer] != None:
-                        feature_maps[layer] = torch.cat((feature_maps[layer], batch_feature_map[layer]))
+        input_size, dataset_size, start_index = inputs.dataset[0].shape, len(inputs.dataset), 0
+        feature_maps = get_empty_feature_maps(model, next(iter(inputs))[:3], input_size, 
+                                              dataset_size, layers_to_retain, remove_duplicates)
+        
+        for imgs in tqdm(inputs, desc = 'Feature Extraction (Batch)') if use_tqdm else inputs:
+            imgs = imgs.cuda() if next(model.parameters()).is_cuda else imgs
+            batch_feature_maps = get_feature_maps(model, imgs, layers_to_retain, remove_duplicates = False)
+            for map_i, map_key in enumerate(feature_maps):
+                feature_maps[map_key][start_index:start_index+imgs.shape[0],...] = batch_feature_maps[map_key]
+            start_index += imgs.shape[0]
                     
     if not isinstance(inputs, DataLoader):
         inputs = inputs.cuda() if next(model.parameters()).is_cuda else inputs
         feature_maps = get_feature_maps(model, inputs, layers_to_retain, remove_duplicates)
-        
-    if layers_to_retain is not None:
-        feature_maps = {map_key: map_item  for (map_key, map_item) in feature_maps.items() 
-                        if map_key in layers_to_retain}
     
     if remove_duplicates == True:
         feature_maps = remove_duplicate_feature_maps(feature_maps)
      
-    
     if flatten == True:
         for map_key in feature_maps:
             incoming_map = feature_maps[map_key]
@@ -292,34 +269,55 @@ def get_all_feature_maps(model, inputs, extract_by_stack=False, remove_duplicate
             
     return feature_maps
 
-def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = True):
+def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = False):
     model = prep_model_for_extraction(model)
+    enforce_input_shape = True
+
+    inputs = torch.rand(3, *input_size)
+    if next(model.parameters()).is_cuda:
+        inputs = inputs.cuda()
     
     def register_hook(module):
         def hook(module, input, output):
+            def process_output(output, module_name):
+                if isinstance(output, torch.Tensor):
+                    outputs = output.cpu().detach()
+                    if not enforce_input_shape:
+                        map_data[module_name] = outputs
+                    if enforce_input_shape:
+                        if outputs.shape[0] == inputs.shape[0]:
+                            map_data[module_name] = outputs
+
+                if module_name in map_data:
+                    module_name = get_module_name(module, metadata)
+                    feature_map = output.cpu().detach()
+                    map_data[module_name] = feature_map
+                    metadata[module_name] = {}
+
+                    metadata[module_name]['feature_map_shape'] = feature_map.numpy().shape[1:]
+                    metadata[module_name]['feature_count'] = feature_map.numpy().reshape(1, -1).shape[1]
+
+                    params = 0
+                    if hasattr(module, "weight") and hasattr(module.weight, "size"):
+                        params += torch.prod(torch.LongTensor(list(module.weight.size())))
+                    if hasattr(module, "bias") and hasattr(module.bias, "size"):
+                        params += torch.prod(torch.LongTensor(list(module.bias.size())))
+                    if isinstance(params, torch.Tensor):
+                        params = params.item()
+                    metadata[module_name]['parameter_count'] = params
+          
             module_name = get_module_name(module, metadata)
-            feature_map = output.cpu().detach()
-            map_data[module_name] = feature_map
-            metadata[module_name] = {}
-            
-            metadata[module_name]['feature_map_shape'] = feature_map.numpy().squeeze().shape
-            metadata[module_name]['feature_count'] = feature_map.numpy().reshape(1, -1).shape[1]
-            
-            params = 0
-            if hasattr(module, "weight") and hasattr(module.weight, "size"):
-                params += torch.prod(torch.LongTensor(list(module.weight.size())))
-            if hasattr(module, "bias") and hasattr(module.bias, "size"):
-                params += torch.prod(torch.LongTensor(list(module.bias.size())))
-            if isinstance(params, torch.Tensor):
-                params = params.item()
-            metadata[module_name]['parameter_count'] = params
-                
+          
+            if not any([isinstance(output, type_) for type_ in (tuple,list)]):
+                process_output(output, module_name)
+        
+            if any([isinstance(output, type_) for type_ in (tuple,list)]):
+                for output_i, output_ in enumerate(output):
+                    module_name_ = '-'.join([module_name, str(output_i+1)])
+                    process_output(output_, module_name_)
+              
         if (not isinstance(module, nn.Sequential) and not isinstance(module, nn.ModuleList)):
             hooks.append(module.register_forward_hook(hook))
-            
-    inputs = torch.rand(1, *input_size)
-    if next(model.parameters()).is_cuda:
-        inputs = inputs.cuda()
     
     map_data = OrderedDict()
     metadata = OrderedDict()
@@ -336,11 +334,76 @@ def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = 
         map_data = remove_duplicate_feature_maps(map_data)
         metadata = {k:v for (k,v) in metadata.items() if k in map_data}
         
-    return(metadata)  
+    return(metadata)
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def get_model_metadata(model_string, convert_to_dataframe = True):
+    model_name = model_options[model_string]['model_name']
+    train_type = model_options[model_string]['train_type']
+    model = eval(model_options[model_string]['call'])
+    
+    layer_metadata = get_feature_map_metadata(model)
+    layer_count = len(layer_metadata.keys())
+    layer_order = [model_layer for model_layer in layer_metadata]
+    feature_counts = [layer_metadata[layer]['feature_count'] 
+                      for layer in layer_metadata]
+    parameter_counts = [layer_metadata[layer]['parameter_count'] 
+                        for layer in layer_metadata]
+    feature_map_shapes = [layer_metadata[layer]['feature_map_shape'] 
+                          for layer in layer_metadata]
+    total_feature_count = int(np.array(feature_counts).sum())
+    total_parameter_count = int(np.array(parameter_counts).sum())
+    model_metadata = {'total_feature_count': total_feature_count,
+                      'total_parameter_count': total_parameter_count,
+                      'layer_count': layer_count,
+                      'layer_metadata': layer_metadata}
+    
+    if not convert_to_dataframe:
+        return(model_metadata)
+        
+    if convert_to_dataframe:
+
+        model_metadata_dictlist = []
+        
+        for layer_index, layer in enumerate(layer_metadata):
+            model_metadata_dictlist.append({'model': model_name, 'train_type': train_type,
+                                            'model_layer': layer, 'model_layer_index': layer_index + 1,
+                                            'model_layer_depth': (layer_index + 1) / layer_count,
+                                            'feature_count': layer_metadata[layer]['feature_count'],
+                                            'parameter_count': layer_metadata[layer]['parameter_count']})
+
+        return(pd.DataFrame(model_metadata_dictlist))
         
 # Helpers: Dataloaders and functions for facilitating feature extraction
+
+class StimulusSet(Dataset):
+    def __init__(self, csv, root_dir, image_transforms=None):
         
-class Array2DataLoader(Dataset):
+        self.root = os.path.expanduser(root_dir)
+        self.transforms = image_transforms
+        
+        if isinstance(csv, pd.DataFrame):
+            self.df = csv
+        if isinstance(csv, str):
+            self.df = pd.read_csv(csv)
+        
+        self.images = self.df.image_name
+
+    def __getitem__(self, index):
+        filename = os.path.join(self.root, self.images.iloc[index])
+        img = Image.open(filename).convert('RGB')
+        
+        if self.transforms:
+            img = self.transforms(img)
+            
+        return img
+    
+    def __len__(self):
+        return len(self.images)
+        
+class Array2DataSet(Dataset):
     def __init__(self, img_array, image_transforms=None):
         self.transforms = image_transforms
         if isinstance(img_array, np.ndarray):

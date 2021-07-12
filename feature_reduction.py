@@ -56,7 +56,7 @@ def torch_corrcoef(m):
     return cor_m
 
 def srp_extraction(model_string, model = None, feature_maps = None, model_inputs=None, output_dir='./srp_arrays', 
-                   n_projections=None, eps=0.1, seed = 0, keep_feature_maps = False):
+                   n_projections=None, eps=0.1, seed = 0, keep_feature_maps = True):
     
     check_model(model_string, model)
     check_reduction_inputs(feature_maps, model_inputs)
@@ -106,10 +106,10 @@ def srp_extraction(model_string, model = None, feature_maps = None, model_inputs
             if feature_map.shape[1] <= n_projections:
                 srp_feature_maps[feature_map_name] = feature_map
             np.save(output_filepath, srp_feature_maps[feature_map_name])
-            if not keep_feature_maps:
-                feature_maps.pop(feature_map_name)
         if os.path.exists(output_filepath):
             srp_feature_maps[feature_map_name] = np.load(output_filepath, allow_pickle=True)
+        if not keep_feature_maps:
+                feature_maps.pop(feature_map_name)
             
     return(srp_feature_maps)
 
@@ -157,7 +157,7 @@ def rdm_extraction(model_string, model = None, feature_maps = None, model_inputs
     return(model_rdms)
 
 def pca_extraction(model_string, model = None, feature_maps = None, model_inputs=None, output_dir='./pca_arrays', 
-                   n_components=None, use_imagenet_pca = True, imagenet_sample_path = None, keep_feature_maps = False):
+                   n_components=None, use_imagenet_pca = True, imagenet_sample_path = None, keep_feature_maps = True):
     
     check_model(model_string, model)
     check_reduction_inputs(feature_maps, model_inputs)
@@ -215,7 +215,7 @@ def pca_extraction(model_string, model = None, feature_maps = None, model_inputs
         
     if not all([os.path.exists(file) for file in output_filepaths.values()]) and use_imagenet_pca:
         imagenet_images, imagenet_transforms = np.load(imagenet_sample_path), get_image_transforms()['imagenet']
-        imagenet_loader = DataLoader(Array2DataLoader(imagenet_images, imagenet_transforms), batch_size=64)
+        imagenet_loader = DataLoader(Array2DataSet(imagenet_images, imagenet_transforms), batch_size=64)
 
         print('Now extracting feature maps for imagenet_sample...')
         imagenet_feature_maps = get_all_feature_maps(model, imagenet_loader)
@@ -237,11 +237,12 @@ def pca_extraction(model_string, model = None, feature_maps = None, model_inputs
                 pca = PCA(n_components, random_state=0).fit(feature_map)
                 pca_feature_maps[feature_map_name] = pca.transform(feature_map)
             np.save(output_filepath, pca_feature_maps[feature_map_name])
-            if not keep_feature_maps:
-                imagenet_feature_maps.pop(feature_map_name)
-                feature_maps.pop(feature_map_name)
         if os.path.exists(output_filepath):
             pca_feature_maps[feature_map_name] = np.load(output_filepath, allow_pickle=True)
+        if not keep_feature_maps:
+            feature_maps.pop(feature_map_name)
+            if use_imagenet_pca:
+                imagenet_feature_maps.pop(feature_map_name)
             
     return(pca_feature_maps)
 
