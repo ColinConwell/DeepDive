@@ -173,8 +173,12 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
                         if enforce_input_shape:
                             if outputs.shape[0] == inputs.shape[0]:
                                 feature_maps[module_name] = outputs
+                            if outputs.shape[0] != inputs.shape[0]
+                                feature_maps[module_name] = None
                         if not enforce_input_shape:
                             feature_maps[module_name] = outputs
+                if layers_to_retain is not None and module_name not in layers_to_retain:
+                    feature_maps[module_name] = None
                             
             module_name = get_module_name(module, feature_maps)
             
@@ -200,16 +204,20 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
     for hook in hooks:
         hook.remove()
         
+    feature_maps = {map:features for (map,features) in feature_maps.items()
+                        if features is not None}
+        
     if remove_duplicates == True:
         feature_maps = remove_duplicate_feature_maps(feature_maps)
         
     return(feature_maps)
 
 def get_inputs_sample(inputs):
-    if isinstance(inputs, DataLoader):
-        input_sample = next(iter(inputs))[:3]
     if isinstance(inputs, torch.Tensor):
         input_sample = inputs[:3]
+        
+    if isinstance(inputs, DataLoader):
+        input_sample = next(iter(inputs))[:3]
         
     return input_sample
 

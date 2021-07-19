@@ -47,4 +47,31 @@ def get_model_metadata(model_option, convert_to_dataframe = True):
                                             'parameter_count': layer_metadata[layer]['parameter_count']})
 
         return(pd.DataFrame(model_metadata_dictlist))
+    
+if __name__ == "__main__":
+    
+    model_options = {**get_model_options(model_type='imagenet'), 
+                     **get_model_options(train_type='taskonomy')}
+
+    model_metadata_dflist = []
+
+    def process(model_option):
+        incoming_metadata = get_model_metadata(model_option)
+        model_metadata_dflist.append(incoming_metadata)
+
+    problematic_model_options = []
+
+    def remark(model_option):
+        problematic_model_options.append(model_option)
+
+    model_option_iterator = tqdm(model_options)
+    for model_option in model_option_iterator:
+        model_option_iterator.set_description(model_option)
+        try: process(model_option)
+        except: remark(model_option)
+            
+    pd.concat(model_metadata_dflist).to_csv('model_metadata.csv', index = None)
+
+    
+    
 
