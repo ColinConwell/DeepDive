@@ -173,7 +173,7 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
                         if enforce_input_shape:
                             if outputs.shape[0] == inputs.shape[0]:
                                 feature_maps[module_name] = outputs
-                            if outputs.shape[0] != inputs.shape[0]
+                            if outputs.shape[0] != inputs.shape[0]:
                                 feature_maps[module_name] = None
                         if not enforce_input_shape:
                             feature_maps[module_name] = outputs
