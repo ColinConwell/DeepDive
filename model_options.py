@@ -30,10 +30,12 @@ def define_torchvision_options():
             
     return torchvision_options
 
-from visual_priors import taskonomy_network
+from visualpriors.taskonomy_network import TASKONOMY_PRETRAINED_URLS
+from visualpriors import taskonomy_network
 
-def instantiate_taskonomy_model(model_name, verbose = False):
-    weights = torch.load(path_dir + '/task_weights/{}_encoder.pth'.format(model_name))
+def instantiate_taskonomy_encoder(model_name, verbose = False):
+    weights_url = TASKONOMY_PRETRAINED_URLS[model_name + '_encoder'] 
+    weights = torch.utils.model_zoo.load_url(weights_url)
     if verbose: print('{} weights loaded succesfully.'.format(model_name))
     model = taskonomy_network.TaskonomyEncoder()
     model.load_state_dict(weights['state_dict'])
@@ -49,7 +51,7 @@ def define_taskonomy_options():
         model_type = row['model_type']
         train_type, model_source = 'taskonomy', 'taskonomy'
         model_string = model_name + '_' + train_type
-        model_call = "instantiate_taskonomy_model('{}')".format(model_name)
+        model_call = "instantiate_taskonomy_encoder('{}')".format(model_name)
         taskonomy_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
                                             'train_type': train_type, 'model_source': model_source, 'call': model_call})
         
