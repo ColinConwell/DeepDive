@@ -63,6 +63,30 @@ def get_module_name(module, module_list):
     
     return '-'.join([class_name, class_count])
     
+def get_feature_maps_(model, inputs):
+    model = prep_model_for_extraction(model)
+    
+    def register_hook(module):
+        def hook(module, input, output):
+            module_name = get_module_name(module, feature_maps)
+            feature_maps[module_name] = output
+                    
+        if not isinstance(module, nn.Sequential): 
+            if not isinstance(module, nn.ModuleList):
+                hooks.append(module.register_forward_hook(hook))
+            
+    feature_maps = OrderedDict()
+    hooks = []
+    
+    model.apply(register_hook)
+    with torch.no_grad():
+        model(inputs)
+
+    for hook in hooks:
+        hook.remove()
+        
+    return(feature_maps)
+
 def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_matches = False, use_tqdm = False):
     matches, layer_names = [], list(feature_maps.keys())
         
@@ -105,30 +129,6 @@ def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_match
     
     if not return_matches:
         return(deduplicated_feature_maps)
-    
-def get_feature_maps_(model, inputs):
-    model = prep_model_for_extraction(model)
-    
-    def register_hook(module):
-        def hook(module, input, output):
-            module_name = get_module_name(module, feature_maps)
-            feature_maps[module_name] = output
-                    
-        if not isinstance(module, nn.Sequential): 
-            if not isinstance(module, nn.ModuleList):
-                hooks.append(module.register_forward_hook(hook))
-            
-    feature_maps = OrderedDict()
-    hooks = []
-    
-    model.apply(register_hook)
-    with torch.no_grad():
-        model(inputs)
-
-    for hook in hooks:
-        hook.remove()
-        
-    return(feature_maps)
 
 def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates = True):
     model = prep_model_for_extraction(model)
