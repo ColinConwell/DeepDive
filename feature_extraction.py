@@ -63,36 +63,6 @@ def get_module_name(module, module_list):
     
     return '-'.join([class_name, class_count])
     
-def get_layer_names(model, output='dict'):
-    layer_name_list = []
-    layer_name_dict = OrderedDict()
-    def add_layer_to_list(module):
-        if (not isinstance(module, nn.Sequential) and not isinstance(module, nn.ModuleList)):
-            layer_key = get_module_name(module, layer_name_dict)
-            layer_name_dict[layer_key] = None
-            layer_name_list.append(layer_key)
-    
-    model.apply(convert_relu)
-    model.apply(add_layer_to_list)
-            
-    if output=='list':
-        return layer_name_list
-    if output=='dict':
-        return layer_name_dict
-    if output=='both':
-        return layer_name_list, layer_name_dict
-    
-def get_feature_map_count(model):
-    module_list = []
-    def count_module(module):
-        if (not isinstance(module, nn.Sequential) and not isinstance(module, nn.ModuleList)):
-            module_list.append(module)
-    
-    model.apply(convert_relu)
-    model.apply(count_module)
-            
-    return len(module_list)
-    
 def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_matches = False, use_tqdm = False):
     matches, layer_names = [], list(feature_maps.keys())
         
@@ -243,6 +213,18 @@ def get_empty_feature_maps(model, inputs = None, input_size=(3,224,224), dataset
     
     if names_only == False:
         return empty_feature_maps  
+    
+    
+def get_feature_map_names(model, inputs = None, remove_duplicates = True):
+    feature_map_names = get_empty_feature_maps(model, inputs, names_only = True,
+                                                remove_duplicates = remove_duplicates)
+    
+    return(feature_map_names)
+
+def get_feature_map_count(model, inputs = None, remove_duplicates = True):
+    feature_map_names = get_feature_map_names(model, inputs, remove_duplicates)
+    
+    return(len(feature_map_names))
 
 def get_all_feature_maps(model, inputs, layers_to_retain=None, remove_duplicates=True, 
                          flatten=True, numpy=True, use_tqdm = True):
