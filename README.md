@@ -11,10 +11,10 @@ This repository is a work in progress; please cite any issues you encounter.
 If you find this repository useful, please consider citing it with the following BibTex:
 
 ```BibTeX
-@misc{conwell2021deepmodeldiver,
+@misc{conwell2021deepdive,
   author =       {Colin Conwell},
-  title =        {DeepModelDiver},
-  howpublished = {\url{https://github.com/ColinConwell/DeepModelDiver}},
+  title =        {DeepDive},
+  howpublished = {\url{https://github.com/ColinConwell/DeepDive}},
   year =         {2021}
 }
 ```
