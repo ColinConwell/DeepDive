@@ -131,6 +131,13 @@ def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_match
         return(deduplicated_feature_maps)
 
 def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates = True):
+    '''
+    Returns the feature maps for specified layers of the model
+    
+    model: pytorch model
+    layers_to_retain: which layers to get features for. Default 'None' is ALL layers
+    remove_duplicates: drop layers if multiple with the same name
+    '''
     model = prep_model_for_extraction(model)
     enforce_input_shape = True
     
