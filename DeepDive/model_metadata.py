@@ -4,8 +4,8 @@ import pandas as pd
 from tqdm.auto import tqdm as tqdm
 
 sys.path.append('../model_options')
-from feature_extraction import *
-from model_options import *
+from .feature_extraction import *
+from .model_options import *
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

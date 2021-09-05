@@ -12,8 +12,8 @@ from sklearn.random_projection import johnson_lindenstrauss_min_dim
 from sklearn.random_projection import SparseRandomProjection
 from sklearn.decomposition import PCA
 
-from feature_extraction import *
-from model_options import *
+from .feature_extraction import *
+from .model_options import *
 
 def get_prepped_model(model_string):
     model_options = get_model_options()
