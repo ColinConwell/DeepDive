@@ -1,5 +1,5 @@
 # DeepDive (into Deep Neural Networks)
- 
+
 Designed for deep net feature extraction, dimensionality reduction, and benchmarking, this repo contains a number of convenience functions for loading and instrumentalizing a variety of (PyTorch) models. Models available include those from:
 
 - the [PyTorch-Image-Models](https://github.com/rwightman/pytorch-image-models) (Timm) library
