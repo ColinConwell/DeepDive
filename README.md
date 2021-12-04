@@ -8,6 +8,12 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 
 This repository is a work in progress; please cite any issues you encounter.
 
+### Installation:
+
+```
+pip install git+https://github.com/ColinConwell/DeepDive.git
+```
+
 If you find this repository useful, please consider citing it with the following BibTex:
 
 ```BibTeX
