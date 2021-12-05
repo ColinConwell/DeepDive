@@ -1,8 +1,8 @@
-import os, sys
-import warnings
+import os, sys, shutil
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from warnings import warn
 from tqdm.auto import tqdm as tqdm
 from collections import defaultdict, OrderedDict
 
@@ -13,12 +13,24 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-def convert_relu(parent):
-    for child_name, child in parent.named_children():
-        if isinstance(child, nn.ReLU):
-            setattr(parent, child_name, nn.ReLU(inplace=False))
-        elif len(list(child.children())) > 0:
-            convert_relu(child)
+from model_options import *
+
+def get_prepped_model(model_string):
+    model_options = get_model_options()
+    model_call = model_options[model_string]['call']
+    model = eval(model_call)
+    model = model.eval()
+    if torch.cuda.is_available():
+        model = model.cuda()
+        
+    return(model)
+
+def check_model(model_string, model = None):
+    if not isinstance(model_string, str):
+        model = model_string
+    model_options = get_model_options()
+    if model_string not in model_options and model == None:
+        raise ValueError('model_string not available in prepped models. Please supply model object.')
             
 def prep_model_for_extraction(model):
     if model.training:
@@ -28,6 +40,24 @@ def prep_model_for_extraction(model):
             model = model.cuda()
 
     return(model)
+
+def convert_relu(parent):
+    for child_name, child in parent.named_children():
+        if isinstance(child, nn.ReLU):
+            setattr(parent, child_name, nn.ReLU(inplace=False))
+        elif len(list(child.children())) > 0:
+            convert_relu(child)
+
+def get_image_transforms():
+    imagenet_stats = {'mean': [0.485, 0.456, 0.406],
+                      'std': [0.229, 0.224, 0.225]}
+    
+    options = {'imagenet': [transforms.Resize((224,224)), 
+                            transforms.ToTensor(),
+                            transforms.Normalize(**imagenet_stats)]}
+    
+    return {key:transforms.Compose(value) 
+            for (key, value) in options.items()} 
 
 # Method 1: Flatten model; extract features by layer
 
@@ -57,11 +87,28 @@ def get_features_by_layer(model, target_layer, img_tensor):
 
 # Method 2: Hook all layers simultaneously; remove duplicates
 
+
+def get_weights_dtype(model):
+    module = list(model.children())[0]
+    if not isinstance(module, nn.Sequential) and not isinstance(module, nn.ModuleList):
+        return module.weight.dtype
+    if isinstance(module, nn.Sequential) or isinstance(module, nn.ModuleList):
+        return get_weights_dtype(module)
+
 def get_module_name(module, module_list):
     class_name = str(module.__class__).split(".")[-1].split("'")[0]
     class_count = str(sum(class_name in module for module in module_list) + 1)
     
     return '-'.join([class_name, class_count])
+
+def get_inputs_sample(inputs):
+    if isinstance(inputs, torch.Tensor):
+        input_sample = inputs[:3]
+        
+    if isinstance(inputs, DataLoader):
+        input_sample = next(iter(inputs))[:3]
+        
+    return input_sample
     
 def get_feature_maps_(model, inputs):
     model = prep_model_for_extraction(model)
@@ -129,6 +176,14 @@ def remove_duplicate_feature_maps(feature_maps, method = 'hashkey', return_match
     
     if not return_matches:
         return(deduplicated_feature_maps)
+    
+def check_for_input_axis(feature_map, input_size):
+    axis_match = [dim for dim in feature_map.shape if dim == input_size]
+    return True if len(axis_match) == 1 else False
+
+def reset_input_axis(feature_map, input_size):
+    input_axis = feature_map.shape.index(input_size)
+    return torch.swapaxes(feature_map, 0, input_axis)
 
 def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates = True):
     model = prep_model_for_extraction(model)
@@ -139,12 +194,17 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
             def process_output(output, module_name):
                 if layers_to_retain is None or module_name in layers_to_retain:
                     if isinstance(output, torch.Tensor):
-                        outputs = output.cpu().detach()
+                        outputs = output.cpu().detach().type(torch.FloatTensor)
                         if enforce_input_shape:
                             if outputs.shape[0] == inputs.shape[0]:
                                 feature_maps[module_name] = outputs
                             if outputs.shape[0] != inputs.shape[0]:
-                                feature_maps[module_name] = None
+                                if check_for_input_axis(outputs, inputs.shape[0]):
+                                    outputs = reset_input_axis(outputs, inputs.shape[0])
+                                    feature_maps[module_name] = outputs
+                                if not check_for_input_axis(outputs, inputs.shape[0]):
+                                    feature_maps[module_name] = None
+                                    warn('Ambiguous input axis in {}. Skipping...'.format(module_name))
                         if not enforce_input_shape:
                             feature_maps[module_name] = outputs
                 if layers_to_retain is not None and module_name not in layers_to_retain:
@@ -162,7 +222,7 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
                     
         if (not isinstance(module, nn.Sequential) and not isinstance(module, nn.ModuleList)):
             hooks.append(module.register_forward_hook(hook))
-            
+    
     feature_maps = OrderedDict()
     hooks = []
     
@@ -182,23 +242,15 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
         
     return(feature_maps)
 
-def get_inputs_sample(inputs):
-    if isinstance(inputs, torch.Tensor):
-        input_sample = inputs[:3]
-        
-    if isinstance(inputs, DataLoader):
-        input_sample = next(iter(inputs))[:3]
-        
-    return input_sample
-
 def get_empty_feature_maps(model, inputs = None, input_size=(3,224,224), dataset_size=3,
         layers_to_retain = None, remove_duplicates = True, names_only=False):
+
     
     if inputs is not None:
         inputs = get_inputs_sample(inputs)
         
     if inputs is None:
-        inputs = torch.rand(3, *input_size).type(torch.FloatTensor)
+        inputs = torch.rand(3, *input_size)
         
     if next(model.parameters()).is_cuda:
         inputs = inputs.cuda()
@@ -227,23 +279,40 @@ def get_feature_map_count(model, inputs = None, remove_duplicates = True):
     return(len(feature_map_names))
 
 def get_all_feature_maps(model, inputs, layers_to_retain=None, remove_duplicates=True, 
-                         flatten=True, numpy=True, use_tqdm = True):
+                         include_input_space = False, flatten=True, numpy=True, use_tqdm = True):
+    
+    check_model(model)
+    if isinstance(model, str):
+        model = get_prepped_model(model)
     
     if isinstance(inputs, DataLoader):
         input_size, dataset_size, start_index = inputs.dataset[0].shape, len(inputs.dataset), 0
         feature_maps = get_empty_feature_maps(model, next(iter(inputs))[:3], input_size, 
                                               dataset_size, layers_to_retain, remove_duplicates)
         
+        if include_input_space:
+            input_map = {'Input': torch.empty(dataset_size, *input_size)}
+            feature_maps = {**input_map, **feature_maps}
+        
+        
         for imgs in tqdm(inputs, desc = 'Feature Extraction (Batch)') if use_tqdm else inputs:
             imgs = imgs.cuda() if next(model.parameters()).is_cuda else imgs
             batch_feature_maps = get_feature_maps(model, imgs, layers_to_retain, remove_duplicates = False)
+            
+            if include_input_space:
+                batch_feature_maps['Input'] = imgs.cpu()
+            
             for map_i, map_key in enumerate(feature_maps):
                 feature_maps[map_key][start_index:start_index+imgs.shape[0],...] = batch_feature_maps[map_key]
             start_index += imgs.shape[0]
                     
     if not isinstance(inputs, DataLoader):
-        inputs = inputs.cuda() if next(model.parameters()).is_cuda else inputs
+        if isinstance(inputs, torch.Tensor):
+            inputs = inputs.cuda() if next(model.parameters()).is_cuda else inputs
         feature_maps = get_feature_maps(model, inputs, layers_to_retain, remove_duplicates)
+        
+        if include_input_space:
+            feature_maps = {**{'Input': inputs.cpu()}, **feature_maps}
     
     if remove_duplicates == True:
         feature_maps = remove_duplicate_feature_maps(feature_maps)
@@ -271,12 +340,19 @@ def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = 
         def hook(module, input, output):
             def process_output(output, module_name):
                 if isinstance(output, torch.Tensor):
-                    outputs = output.cpu().detach()
+                    outputs = output.cpu().detach().type(torch.FloatTensor)
                     if not enforce_input_shape:
                         map_data[module_name] = outputs
                     if enforce_input_shape:
                         if outputs.shape[0] == inputs.shape[0]:
                             map_data[module_name] = outputs
+                        if outputs.shape[0] != inputs.shape[0]:
+                            if check_for_input_axis(outputs, inputs.shape[0]):
+                                outputs = reset_input_axis(outputs, inputs.shape[0])
+                                map_data[module_name] = outputs
+                            if not check_for_input_axis(outputs, inputs.shape[0]):
+                                feature_maps[module_name] = None
+                                warn('Ambiguous input axis in {}. Skipping...'.format(module_name))
 
                 if module_name in map_data:
                     module_name = get_module_name(module, metadata)
@@ -329,6 +405,20 @@ def get_feature_map_metadata(model, input_size=(3,224,224), remove_duplicates = 
 # Helpers: Dataloaders and functions for facilitating feature extraction
 
 class StimulusSet(Dataset):
+    def __init__(self, image_paths, image_transforms=None):
+        self.images = image_paths
+        self.transforms = image_transforms
+
+    def __getitem__(self, index):
+        img = Image.open(self.images[index]).convert('RGB')
+        if self.transforms:
+            img = self.transforms(img)
+        return img
+    
+    def __len__(self):
+        return self.images.shape[0]
+
+class CSV2StimulusSet(Dataset):
     def __init__(self, csv, root_dir, image_transforms=None):
         
         self.root = os.path.expanduser(root_dir)
@@ -353,7 +443,7 @@ class StimulusSet(Dataset):
     def __len__(self):
         return len(self.images)
         
-class Array2DataSet(Dataset):
+class Array2StimulusSet(Dataset):
     def __init__(self, img_array, image_transforms=None):
         self.transforms = image_transforms
         if isinstance(img_array, np.ndarray):
@@ -369,9 +459,6 @@ class Array2DataSet(Dataset):
     
     def __len__(self):
         return self.images.shape[0]
-    
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
     
 def get_feature_map_size(feature_maps, layer=None):
     total_size = 0
@@ -392,6 +479,8 @@ def get_feature_map_size(feature_maps, layer=None):
 def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+        
+# Dataloader Visualizations
         
 def reverse_typical_transforms(img_array):
     if torch.is_tensor(img_array):
@@ -431,7 +520,7 @@ def numpy_to_pil(img_array):
 
 from torchvision.utils import make_grid
 
-def get_dataloader_sample(dataloader, nrow = 5, figsize = (5,5), title=None,  
+def get_dataloader_sample(dataloader, nrow = 5, figsize = (5,5), title=None, 
                           reverse_transforms = reverse_imagenet_transforms):
     
     image_batch = next(iter(dataloader))
@@ -444,5 +533,4 @@ def get_dataloader_sample(dataloader, nrow = 5, figsize = (5,5), title=None,
     plt.axis('off')
     if title is not None:
         plt.title(title)
-    plt.pause(0.001)
         
