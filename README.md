@@ -5,8 +5,11 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 - the [PyTorch-Image-Models](https://github.com/rwightman/pytorch-image-models) (Timm) library
 - the [Torchvision](https://pytorch.org/vision/stable/models.html) model zoo
 - the [Taskonomy](http://taskonomy.stanford.edu/) (visual_priors) project
+- the [VISSL](https://vissl.ai/) (self-supervised) model zoo
+- the [Detectron2](https://github.com/facebookresearch/detectron2) model zoo
+- ISL's [MiDas](https://github.com/isl-org/MiDaS) models, FaceBook's [DINO](https://github.com/facebookresearch/dino) models...
 
-This repository is a work in progress; please cite any issues you encounter.
+And many more. This repository is a work in progress; please cite any issues you encounter.
 
 ### Installation:
 

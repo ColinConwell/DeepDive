@@ -1,6 +1,6 @@
 ### Auxiliary Functions: Feature Extraction ---------------------------------------------------------
 
-from feature_extraction import *
+from model_opts.feature_extraction import *
 
 def reverse_typical_transforms(img_array):
     if torch.is_tensor(img_array):
