@@ -11,7 +11,6 @@ import torch.nn as nn
 import torch, torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
-from torch.autograd import Variables
             
 def prep_model_for_extraction(model):
     if model.training:
