@@ -21,7 +21,7 @@ If you find this repository useful, please consider citing it with the following
 
 ```BibTeX
 @misc{conwell2021deepdive,
-  author =       {Colin Conwell},
+  author =       {Colin Conwell, Garyk Brixi},
   title =        {DeepDive},
   howpublished = {\url{https://github.com/ColinConwell/DeepDive}},
   year =         {2021}
