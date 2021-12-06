@@ -12,8 +12,8 @@ from sklearn.random_projection import johnson_lindenstrauss_min_dim
 from sklearn.random_projection import SparseRandomProjection
 from sklearn.decomposition import PCA
 
-from feature_extraction import *
-from model_options import *
+from .feature_extraction import *
+from .model_options import *
 
 def check_reduction_inputs(feature_maps = None, model_inputs = None):
     if feature_maps == None and model_inputs == None:
