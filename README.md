@@ -13,9 +13,7 @@ And many more. This repository is a work in progress; please cite any issues you
 
 ### Installation:
 
-```
-pip install git+https://github.com/ColinConwell/DeepDive.git
-```
+Git clone and use locally
 
 If you find this repository useful, please consider citing it with the following BibTex:
 
