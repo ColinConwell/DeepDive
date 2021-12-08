@@ -11,10 +11,6 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 
 And more. This repository is a work in progress; please cite any issues you encounter.
 
-### Installation:
-
-Git clone and use locally
-
 If you find this repository useful, please consider citing it with the following BibTex:
 
 ```BibTeX
