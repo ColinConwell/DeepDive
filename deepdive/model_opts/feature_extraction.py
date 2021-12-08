@@ -20,7 +20,7 @@ def prep_model_for_extraction(model):
             model = model.cuda()
 
     return(model)
-    
+
 def convert_relu(parent):
     for child_name, child in parent.named_children():
         if isinstance(child, nn.ReLU):

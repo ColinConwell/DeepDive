@@ -4,8 +4,8 @@ import pandas as pd
 from tqdm.auto import tqdm as tqdm
 
 sys.path.append('../model_options')
-from feature_extraction import *
-from model_options import *
+from .feature_extraction import *
+from .model_options import *
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -15,15 +15,15 @@ def get_model_metadata(model_option, convert_to_dataframe = True):
     train_type = model_option['train_type']
     model = eval(model_option['call'])
     model = prep_model_for_extraction(model)
-    
+
     layer_metadata = get_feature_map_metadata(model)
     layer_count = len(layer_metadata.keys())
     layer_order = [model_layer for model_layer in layer_metadata]
-    feature_counts = [layer_metadata[layer]['feature_count'] 
+    feature_counts = [layer_metadata[layer]['feature_count']
                       for layer in layer_metadata]
-    parameter_counts = [layer_metadata[layer]['parameter_count'] 
+    parameter_counts = [layer_metadata[layer]['parameter_count']
                         for layer in layer_metadata]
-    feature_map_shapes = [layer_metadata[layer]['feature_map_shape'] 
+    feature_map_shapes = [layer_metadata[layer]['feature_map_shape']
                           for layer in layer_metadata]
     total_feature_count = int(np.array(feature_counts).sum())
     total_parameter_count = int(np.array(parameter_counts).sum())
@@ -31,14 +31,14 @@ def get_model_metadata(model_option, convert_to_dataframe = True):
                       'total_parameter_count': total_parameter_count,
                       'layer_count': layer_count,
                       'layer_metadata': layer_metadata}
-    
+
     if not convert_to_dataframe:
         return(model_metadata)
-        
+
     if convert_to_dataframe:
 
         model_metadata_dictlist = []
-        
+
         for layer_index, layer in enumerate(layer_metadata):
             model_metadata_dictlist.append({'model': model_name, 'train_type': train_type,
                                             'model_layer': layer, 'model_layer_index': layer_index + 1,
@@ -47,10 +47,10 @@ def get_model_metadata(model_option, convert_to_dataframe = True):
                                             'parameter_count': layer_metadata[layer]['parameter_count']})
 
         return(pd.DataFrame(model_metadata_dictlist))
-    
+
 if __name__ == "__main__":
-    
-    model_options = {**get_model_options(model_type='imagenet'), 
+
+    model_options = {**get_model_options(model_type='imagenet'),
                      **get_model_options(train_type='taskonomy')}
 
     model_metadata_dflist = []
@@ -69,9 +69,5 @@ if __name__ == "__main__":
         model_option_iterator.set_description(model_option)
         try: process(model_option)
         except: remark(model_option)
-            
+
     pd.concat(model_metadata_dflist).to_csv('model_metadata.csv', index = None)
-
-    
-    
-
