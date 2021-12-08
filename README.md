@@ -9,7 +9,7 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 - the [Detectron2](https://github.com/facebookresearch/detectron2) model zoo
 - ISL's [MiDas](https://github.com/isl-org/MiDaS) models, FaceBook's [DINO](https://github.com/facebookresearch/dino) models...
 
-And many more. This repository is a work in progress; please cite any issues you encounter.
+And more. This repository is a work in progress; please cite any issues you encounter.
 
 ### Installation:
 
