@@ -9,7 +9,9 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 - the [Detectron2](https://github.com/facebookresearch/detectron2) model zoo
 - ISL's [MiDas](https://github.com/isl-org/MiDaS) models, FaceBook's [DINO](https://github.com/facebookresearch/dino) models...
 
-And more. This repository is a work in progress; please cite any issues you encounter.
+Check out these repos that benchmark these models on [human fMRI](https://github.com/ColinConwell/DeepNSD) and [mouse optical physiology](https://github.com/ColinConwell/DeepMouseTrap) data.
+
+This repository is a work in progress; please cite any issues you encounter.
 
 If you find this repository useful, please consider citing it with the following BibTex:
 
