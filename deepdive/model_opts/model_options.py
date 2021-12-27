@@ -19,7 +19,7 @@ import torchvision.models as models
 
 def define_torchvision_options():
     torchvision_options = {}
-    
+
     model_types = ['imagenet','inception','segmentation', 'detection', 'video']
     pytorch_dirs = dict(zip(model_types, ['.','.','.segmentation.', '.detection.', '.video.']))
 
@@ -34,45 +34,45 @@ def define_torchvision_options():
             train_type = row['model_type'] if training=='pretrained' else training
             model_string = '_'.join([model_name, train_type])
             model_call = 'models' + pytorch_dirs[model_type] + model_name + training_calls[training]
-            torchvision_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+            torchvision_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                                   'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return torchvision_options
 
 import torchvision.transforms as transforms
 
 def get_torchvision_transforms(model_type, input_type = 'PIL'):
     imagenet_stats = {'mean': [0.485, 0.456, 0.406], 'std':  [0.229, 0.224, 0.225]}
-    
+
     base_transforms = [transforms.Resize((224,224)), transforms.ToTensor()]
-    
+
     if model_type == 'imagenet':
         specific_transforms = base_transforms + [transforms.Normalize(**imagenet_stats)]
-        
+
     if model_type == 'segmentation':
         specific_transforms = base_transforms + [transforms.Normalize(**imagenet_stats)]
-    
+
     if input_type == 'PIL':
         recommended_transforms = specific_transforms
     if input_type == 'numpy':
         recommended_transforms = [transforms.ToPILImage()] + specific_transforms
-        
+
     return transforms.Compose(recommended_transforms)
 
 
 # Taskonomy Options ---------------------------------------------------------------------------
-    
+
 
 def retrieve_taskonomy_encoder(model_name, verbose = False):
     from visualpriors.taskonomy_network import TASKONOMY_PRETRAINED_URLS
     from visualpriors import taskonomy_network
-    
-    weights_url = TASKONOMY_PRETRAINED_URLS[model_name + '_encoder'] 
+
+    weights_url = TASKONOMY_PRETRAINED_URLS[model_name + '_encoder']
     weights = torch.utils.model_zoo.load_url(weights_url)
     if verbose: print('{} weights loaded succesfully.'.format(model_name))
     model = taskonomy_network.TaskonomyEncoder()
     model.load_state_dict(weights['state_dict'])
-    
+
     return model
 
 def define_taskonomy_options():
@@ -85,13 +85,13 @@ def define_taskonomy_options():
         train_type, model_source = 'taskonomy', 'taskonomy'
         model_string = model_name + '_' + train_type
         model_call = "retrieve_taskonomy_encoder('{}')".format(model_name)
-        taskonomy_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        taskonomy_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                             'train_type': train_type, 'model_source': model_source, 'call': model_call})
-        
+
     taskonomy_options['random_weights_taskonomy'] = ({'model_name': 'random_weights', 'model_type': 'taskonomy',
                                                       'train_type': 'taskonomy', 'model_source': 'taskonomy',
                                                       'call': 'taskonomy_network.TaskonomyEncoder()'})
-            
+
     return taskonomy_options
 
 import torchvision.transforms.functional as functional
@@ -128,28 +128,28 @@ def define_timm_options():
             model_string = '_'.join([model_name, train_type])
             train_bool = False if training == 'random' else True
             model_call = "retrieve_timm_model('{}', pretrained = {})".format(model_name, train_bool)
-            timm_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+            timm_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                            'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return timm_options
 
 def modify_timm_transform(timm_transform):
-    
+
     transform_list = timm_transform.transforms
-    
-    crop_index, crop_size = next((index, transform.size) for index, transform 
+
+    crop_index, crop_size = next((index, transform.size) for index, transform
                              in enumerate(transform_list) if 'CenterCrop' in str(transform))
-    resize_index, resize_size = next((index, transform.size) for index, transform 
+    resize_index, resize_size = next((index, transform.size) for index, transform
                                      in enumerate(transform_list) if 'Resize' in str(transform))
-    
+
     transform_list[resize_index].size = crop_size
     transform_list.pop(crop_index)
     return transforms.Compose(transform_list)
-    
+
 def get_timm_transforms(model_name, input_type = 'PIL'):
     from timm.data.transforms_factory import create_transform
     from timm.data import resolve_data_config
-    
+
     config = resolve_data_config({}, model = model_name)
     timm_transforms = create_transform(**config)
     timm_transform = modify_timm_transform(timm_transforms)
@@ -166,7 +166,7 @@ def get_timm_transforms(model_name, input_type = 'PIL'):
 def retrieve_clip_model(model_name):
     import clip; model, _ = clip.load(model_name, device='cpu')
     return model.visual
-    
+
 def define_clip_options():
     clip_options = {}
 
@@ -178,9 +178,9 @@ def define_clip_options():
         model_source = 'clip'
         model_string = '_'.join([model_name, train_type])
         model_call = "retrieve_clip_model('{}')".format(model_name)
-        clip_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        clip_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                        'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return clip_options
 
 def get_clip_transforms(model_name, input_type = 'PIL'):
@@ -202,9 +202,9 @@ def get_clip_transforms(model_name, input_type = 'PIL'):
 def retrieve_vissl_model(model_name):
     vissl_data = (model_typology[model_typology['model_source'] == 'vissl']
                   .set_index('model_name').to_dict('index'))
-    
+
     weights = load_state_dict_from_url(vissl_data[model_name]['weights_url'], map_location = torch.device('cpu'))
-    
+
     def replace_module_prefix(state_dict, prefix, replace_with = ''):
         return {(key.replace(prefix, replace_with, 1) if key.startswith(prefix) else key): val
                       for (key, val) in state_dict.items()}
@@ -222,11 +222,11 @@ def retrieve_vissl_model(model_name):
     excess_weights = ['fc','projection', 'prototypes']
     converted_weights = {key:value for (key,value) in converted_weights.items()
                              if not any([x in key for x in excess_weights])}
-    
+
     if 'module' in next(iter(converted_weights)):
         converted_weights = {key.replace('module.',''):value for (key,value) in converted_weights.items()
                              if 'fc' not in key}
-    
+
     from torchvision.models import resnet50
     import torch.nn as nn
 
@@ -241,9 +241,9 @@ def retrieve_vissl_model(model_name):
     model.fc = Identity()
 
     model.load_state_dict(converted_weights)
-    
+
     return model
-    
+
 
 def define_vissl_options():
     vissl_options = {}
@@ -256,23 +256,23 @@ def define_vissl_options():
         model_source = 'vissl'
         model_string = '_'.join([model_name, train_type])
         model_call = "retrieve_vissl_model('{}')".format(model_name)
-        vissl_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        vissl_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                         'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return vissl_options
 
 
 def get_vissl_transforms(input_type = 'PIL'):
     imagenet_stats = {'mean': [0.485, 0.456, 0.406], 'std':  [0.229, 0.224, 0.225]}
-    
+
     base_transforms = [transforms.Resize((224,224)), transforms.ToTensor()]
     specific_transforms = base_transforms + [transforms.Normalize(**imagenet_stats)]
-    
+
     if input_type == 'PIL':
         recommended_transforms = specific_transforms
     if input_type == 'numpy':
         recommended_transforms = [transforms.ToPILImage()] + specific_transforms
-        
+
     return transforms.Compose(recommended_transforms)
 
 # Dino Options ---------------------------------------------------------------------------
@@ -288,23 +288,23 @@ def define_dino_options():
         model_source = 'dino'
         model_string = '_'.join([model_name, train_type])
         model_call = "torch.hub.load('facebookresearch/dino:main', '{}')".format(model_name)
-        dino_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        dino_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                        'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return dino_options
 
 def get_dino_transforms(model_type, input_type = 'PIL'):
     imagenet_stats = {'mean': [0.485, 0.456, 0.406], 'std':  [0.229, 0.224, 0.225]}
-    
+
     base_transforms = [transforms.Resize((224,224)), transforms.ToTensor()]
-    
+
     specific_transforms = base_transforms + [transforms.Normalize(**imagenet_stats)]
-    
+
     if input_type == 'PIL':
         recommended_transforms = specific_transforms
     if input_type == 'numpy':
         recommended_transforms = [transforms.ToPILImage()] + specific_transforms
-        
+
     return transforms.Compose(recommended_transforms)
 
 
@@ -321,9 +321,9 @@ def define_midas_options():
         model_source = 'midas'
         model_string = '_'.join([model_name, train_type])
         model_call = "torch.hub.load('intel-isl/MiDaS','{}')".format(model_name)
-        midas_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        midas_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                         'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return midas_options
 
 def get_midas_transforms(model_name, input_type = 'PIL'):
@@ -333,12 +333,12 @@ def get_midas_transforms(model_name, input_type = 'PIL'):
         transform = midas_transforms.dpt_transform
     if model_name not in ['DPT_Large', 'DPT_Hybrid']:
         transform = midas_transforms.small_transform
-    
+
     if input_type == 'PIL':
         recommended_transforms = [lambda img: np.array(img)] + transform.transforms
     if input_type == 'numpy':
         recommended_transforms = transform.transforms
-        
+
     return transforms.Compose(recommended_transforms)
 
 # Detectron2 Options ---------------------------------------------------------------------------
@@ -347,26 +347,26 @@ def retrieve_detectron_model(model_name, backbone_only = True):
     from detectron2.modeling import build_model
     from detectron2 import model_zoo
     from detectron2.checkpoint import DetectionCheckpointer
-    
+
     detectron_data = subset_typology('detectron')
     detectron_dict = (detectron_data.set_index('model').to_dict('index'))
     weights_path = detectron_dict[model_name]['weights_url']
-    
+
     cfg = model_zoo.get_config(weights_path)
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(weights_path)
-    
+
     cfg_clone = cfg.clone()
     model = build_model(cfg_clone)
     model = model.eval()
 
     checkpointer = DetectionCheckpointer(model)
     checkpointer.load(cfg.MODEL.WEIGHTS)
-    
+
     if backbone_only:
         return model.backbone
     if not backbone_only:
         return model
-    
+
 
 def define_detectron_options():
     detectron_options = {}
@@ -379,26 +379,26 @@ def define_detectron_options():
         model_source = 'detectron'
         model_string = '_'.join([model_name, train_type])
         model_call = "retrieve_detectron_model('{}')".format(model_name)
-        detectron_options[model_string] = ({'model_name': model_name, 'model_type': model_type, 
+        detectron_options[model_string] = ({'model_name': model_name, 'model_type': model_type,
                                             'train_type': train_type, 'model_source': model_source, 'call': model_call})
-            
+
     return detectron_options
-    
+
 def get_detectron_transforms(model_name, input_type = 'PIL'):
     import detectron2.data.transforms as detectron_transform
     from detectron2 import model_zoo
-    
+
     detectron_data = subset_typology('detectron')
     detectron_dict = (detectron_data.set_index('model').to_dict('index'))
     weights_path = detectron_dict[model_name]['weights_url']
-    
+
     cfg = model_zoo.get_config(weights_path)
     model = retrieve_detectron_model(model_name, backbone_only = False)
-    
-    augment = detectron_transform.ResizeShortestEdge([cfg.INPUT.MIN_SIZE_TEST, 
-                                                      cfg.INPUT.MIN_SIZE_TEST], 
+
+    augment = detectron_transform.ResizeShortestEdge([cfg.INPUT.MIN_SIZE_TEST,
+                                                      cfg.INPUT.MIN_SIZE_TEST],
                                                       cfg.INPUT.MAX_SIZE_TEST)
-    
+
     def detectron_transforms(original_image):
         if input_type == 'PIL':
             original_image = np.asarray(original_image)
@@ -409,33 +409,33 @@ def get_detectron_transforms(model_name, input_type = 'PIL'):
 
         inputs = {"image": image, "height": height, "width": width}
         return model.preprocess_image([inputs]).tensor
-    
-    return detectron_transforms    
+
+    return detectron_transforms
 
 # Aggregate Options ---------------------------------------------------------------------------
-    
+
 def get_model_options(model_type = None, train_type=None, train_data = None, model_source=None):
     model_options = {**define_torchvision_options(), **define_taskonomy_options(),
-                     **define_timm_options(),  **define_clip_options(), 
+                     **define_timm_options(),  **define_clip_options(),
                      **define_vissl_options(), **define_dino_options(),
                      **define_midas_options(), **define_detectron_options()}
-    
-    if model_type is not None:
-        model_options = {string: info for (string, info) in model_options.items() 
-                         if model_options[string]['model_type'] in model_type}
-        
-    if train_type is not None:
-        model_options = {string: info for (string, info) in model_options.items() 
-                         if model_options[string]['train_type'] in train_type}
-        
-    if model_source is not None:
-        model_options = {string: info for (string, info) in model_options.items() 
-                         if model_options[string]['model_source'] in model_source}
-        
-    return model_options    
-    
 
-transform_options = {'torchvision': get_torchvision_transforms, 
+    if model_type is not None:
+        model_options = {string: info for (string, info) in model_options.items()
+                         if model_options[string]['model_type'] in model_type}
+
+    if train_type is not None:
+        model_options = {string: info for (string, info) in model_options.items()
+                         if model_options[string]['train_type'] in train_type}
+
+    if model_source is not None:
+        model_options = {string: info for (string, info) in model_options.items()
+                         if model_options[string]['model_source'] in model_source}
+
+    return model_options
+
+
+transform_options = {'torchvision': get_torchvision_transforms,
                      'timm': get_timm_transforms,
                      'taskonomy': get_taskonomy_transforms,
                      'clip': get_clip_transforms,
@@ -446,7 +446,7 @@ transform_options = {'torchvision': get_torchvision_transforms,
 
 def get_transform_options():
     return transform_options
-    
+
 def get_recommended_transforms(model_query, input_type = 'PIL'):
     cached_model_types = ['imagenet','taskonomy','vissl']
     model_types = model_typology['model_type'].unique()
@@ -459,7 +459,7 @@ def get_recommended_transforms(model_query, input_type = 'PIL'):
         model_type = model_query
     if model_query not in list(get_model_options()) + list(model_types):
         raise ValueError('Query is neither a model_string nor a model_type.')
-    
+
     if model_type in cached_model_types:
         if model_type == 'imagenet':
             return get_torchvision_transforms('imagenet', input_type)
@@ -467,7 +467,7 @@ def get_recommended_transforms(model_query, input_type = 'PIL'):
             return get_vissl_transforms(input_type)
         if model_type == 'taskonomy':
             return get_taskonomy_transforms(input_type)
-            
+
     if model_type not in cached_model_types:
         if model_source == 'torchvision':
             return transform_options[model_source](model_type, input_type)
@@ -475,6 +475,6 @@ def get_recommended_transforms(model_query, input_type = 'PIL'):
             return transform_options[model_source](model_name, input_type)
         if model_source in ['taskonomy', 'vissl', 'dino', 'midas']:
             return transform_options[model_source](input_type)
-        
+
     if model_query not in list(get_model_options()) + list(model_types):
          raise ValueError('No reference available for this model query.')

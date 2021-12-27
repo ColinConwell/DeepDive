@@ -1,7 +1,9 @@
-from model_opts.feature_extraction import *
-from model_opts.feature_reduction import *
-from model_opts.model_options import *
-from model_opts.mapping_methods import *
+from .model_opts.feature_extraction import *
+from .model_opts.feature_reduction import *
+from .model_opts.model_options import *
+from .model_opts.mapping_methods import *
+from .model_opts.model_metadata import *
+from .model_opts.model_options import *
 
 def get_prepped_model(model_string):
     model_options = get_model_options()

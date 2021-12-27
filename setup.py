@@ -1,9 +1,10 @@
 import setuptools as setuptools
 
 setuptools.setup(
-    name='deepdive',
+    name='DeepDive',
     version='0.1.0',
-    packages=setuptools.find_packages(),
+    packages=['DeepDive'],
+    package_data={'': ['model_opts/model_metadata.csv','model_opts/model_typology.csv']},
     description='package for deep net feature extraction and benchmarking',
     author = 'Colin Conwell',
     author_email='colinconwell@gmail.com',
