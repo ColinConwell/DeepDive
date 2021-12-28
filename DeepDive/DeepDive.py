@@ -4,6 +4,7 @@ from .model_opts.model_options import *
 from .model_opts.mapping_methods import *
 from .model_opts.model_metadata import *
 from .model_opts.model_options import *
+from .utils import *
 
 def get_prepped_model(model_string):
     model_options = get_model_options()
