@@ -3,7 +3,7 @@ import setuptools as setuptools
 setuptools.setup(
     name='DeepDive',
     version='0.1.0',
-    packages=['DeepDive', 'utils.py', 'model_opts'],
+    packages=['DeepDive'],
     package_data={'': ['model_opts/model_metadata.csv','model_opts/model_typology.csv']},
     description='package for deep net feature extraction and benchmarking',
     author = 'Colin Conwell',
