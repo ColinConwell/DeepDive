@@ -183,6 +183,10 @@ def get_feature_maps(model, inputs, layers_to_retain = None, remove_duplicates =
     
     model, inputs = prep_model_for_extraction(model, inputs)
     
+    if layers_to_retain:
+        if not isinstance(layers_to_retain, list):
+            layers_to_retain = [layers_to_retain]
+    
     def fix_outputs_shape(inputs, outputs, module_name):
         if len(outputs.shape) == 0:
             warning('Output in {} is empty. Skipping...'.format(module_name))
