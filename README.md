@@ -11,6 +11,8 @@ Designed for deep net feature extraction, dimensionality reduction, and benchmar
 
 Check out these repos that benchmark these models on [human fMRI](https://github.com/ColinConwell/DeepNSD) and [mouse optical physiology](https://github.com/ColinConwell/DeepMouseTrap) data.
 
+A tutorial that demonstrates the main functionality of this pipeline in both behavior and brains may be found [here](https://colab.research.google.com/drive/1CvOpeKL4xRDbHkpPXGlSDs-JyD-438vl#scrollTo=Jd9vyENcvsIg).
+
 This repository is a work in progress; please cite any issues you encounter.
 
 If you find this repository useful, please consider citing it with the following BibTex:
