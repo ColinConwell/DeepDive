@@ -1,4 +1,5 @@
-name='deepdive'
+__name__ ='deepdive'
+
 from .feature_extraction import *
 from .feature_reduction import *
 from .model_metadata import *
