@@ -15,7 +15,7 @@ A tutorial that demonstrates the main functionality of this pipeline in both beh
 
 This repository is a work in progress; please feel free to file any issues you find.
 
-If you find this repository useful, please consider citing the work that fueled its most recent version:
+If you find this repository useful, please consider citing the work that fueled its most recent development:
 
  ```bibtex
 @article{conwell2023pressures,
@@ -32,6 +32,6 @@ If you find this repository useful, please consider citing the work that fueled 
 
 + **Squeezing your deep nets for science!**
 
-Since the release of ChatGPT, our team has been working on a new, highly-accelerated version of this codebase called **Deepjuice** -- effectively, a bottom-up reimplementation of all DeepDive functionalities that allows for end-to-end benchmarking (feature extraction, SRP, PCA, CKA, RSA, and regression) without ever removing data from the GPU. 
+Recently, our team has been working on a new, highly-accelerated version of this codebase called **Deepjuice** -- effectively, a bottom-up reimplementation of all DeepDive functionalities that allows for end-to-end benchmarking (feature extraction, SRP, PCA, CKA, RSA, and regression) without ever removing data from the GPU. 
 
 **DeepJuice** is currently in private beta, but if you're interested in trying out, please feel free to contact me (Colin Conwell) by email: conwell[at]g[dot]harvard[dot]edu)
