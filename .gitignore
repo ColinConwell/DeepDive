@@ -4,9 +4,8 @@ github_rsync.sh
 
 # Data Files #
 ###################
-*data_saver/*
+*testing/*
 *results/*
-datasets/*
 
 # Checkpoints #
 ###################
